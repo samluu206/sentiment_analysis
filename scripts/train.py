@@ -14,6 +14,7 @@ from sentiment_analyzer import (
     Config
 )
 from sentiment_analyzer.utils.helpers import setup_logging, save_metrics
+from sentiment_analyzer.utils.mlflow_tracker import MLflowTracker
 
 
 def main(args):
@@ -24,6 +25,22 @@ def main(args):
     logger = logging.getLogger(__name__)
 
     logger.info("Starting sentiment analysis training")
+
+    mlflow_tracker = None
+    if args.use_mlflow:
+        logger.info("Initializing MLflow tracking")
+        mlflow_tracker = MLflowTracker(
+            experiment_name=args.experiment_name,
+            tracking_uri=args.mlflow_tracking_uri
+        )
+        mlflow_tracker.start_run(
+            run_name=args.run_name,
+            tags={
+                "model_type": "BERT",
+                "task": "sentiment_classification",
+                "dataset": "amazon_reviews"
+            }
+        )
 
     data_path = Path(config.project_root) / "data" / "raw" / "amazon_polarity_sample.csv"
     logger.info(f"Loading data from {data_path}")
@@ -65,28 +82,43 @@ def main(args):
         num_epochs=args.epochs or config.training.num_epochs,
         batch_size=args.batch_size or config.training.batch_size,
         learning_rate=args.learning_rate or config.training.learning_rate,
-        weight_decay=config.training.weight_decay
+        weight_decay=config.training.weight_decay,
+        use_mlflow=args.use_mlflow,
+        mlflow_tracker=mlflow_tracker
     )
 
-    logger.info("Starting training")
-    trainer = trainer_wrapper.train(train_dataset, val_dataset)
+    try:
+        logger.info("Starting training")
+        trainer = trainer_wrapper.train(train_dataset, val_dataset)
 
-    logger.info("Evaluating model")
-    eval_results = trainer_wrapper.evaluate(trainer, val_dataset)
-    logger.info(f"Evaluation results: {eval_results}")
+        logger.info("Evaluating model")
+        eval_results = trainer_wrapper.evaluate(trainer, val_dataset)
+        logger.info(f"Evaluation results: {eval_results}")
 
-    output_path = Path(config.project_root) / args.output_dir
-    logger.info(f"Saving model to {output_path}")
-    model_wrapper.save_model(str(output_path))
+        output_path = Path(config.project_root) / args.output_dir
+        logger.info(f"Saving model to {output_path}")
+        model_wrapper.save_model(str(output_path))
 
-    tokenizer = preprocessor.get_tokenizer()
-    tokenizer.save_pretrained(str(output_path))
+        tokenizer = preprocessor.get_tokenizer()
+        tokenizer.save_pretrained(str(output_path))
 
-    metrics_path = output_path / "metrics.json"
-    save_metrics(eval_results, str(metrics_path))
-    logger.info(f"Saved metrics to {metrics_path}")
+        metrics_path = output_path / "metrics.json"
+        save_metrics(eval_results, str(metrics_path))
+        logger.info(f"Saved metrics to {metrics_path}")
 
-    logger.info("Training complete")
+        if args.use_mlflow:
+            logger.info("Logging model to MLflow")
+            mlflow_tracker.log_artifact(str(metrics_path), "metrics")
+            mlflow_tracker.log_model(model, artifact_path="model")
+            mlflow_tracker.end_run(status="FINISHED")
+
+        logger.info("Training complete")
+
+    except Exception as e:
+        logger.error(f"Training failed: {e}")
+        if args.use_mlflow and mlflow_tracker:
+            mlflow_tracker.end_run(status="FAILED")
+        raise
 
 
 if __name__ == "__main__":
@@ -96,6 +128,11 @@ if __name__ == "__main__":
     parser.add_argument("--batch-size", type=int, default=None, help="Batch size")
     parser.add_argument("--learning-rate", type=float, default=None, help="Learning rate")
     parser.add_argument("--output-dir", type=str, default="models/trained_model", help="Output directory for model")
+
+    parser.add_argument("--use-mlflow", action="store_true", help="Enable MLflow experiment tracking")
+    parser.add_argument("--experiment-name", type=str, default="sentiment-analysis", help="MLflow experiment name")
+    parser.add_argument("--run-name", type=str, default=None, help="MLflow run name")
+    parser.add_argument("--mlflow-tracking-uri", type=str, default=None, help="MLflow tracking server URI")
 
     args = parser.parse_args()
     main(args)

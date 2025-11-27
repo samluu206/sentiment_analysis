@@ -1,4 +1,4 @@
-.PHONY: help install install-dev setup test lint format clean train predict
+.PHONY: help install install-dev setup test lint format clean train predict mlflow-ui train-mlflow
 
 help:
 	@echo "Available commands:"
@@ -9,7 +9,9 @@ help:
 	@echo "  make lint         - Run linters (flake8, mypy)"
 	@echo "  make format       - Format code with black and isort"
 	@echo "  make clean        - Remove build artifacts and cache"
-	@echo "  make train        - Run training script"
+	@echo "  make train        - Run training script (without MLflow)"
+	@echo "  make train-mlflow - Run training with MLflow tracking"
+	@echo "  make mlflow-ui    - Start MLflow UI server"
 	@echo "  make predict      - Run prediction in interactive mode"
 
 install:
@@ -47,6 +49,12 @@ clean:
 
 train:
 	python scripts/train.py --sample-size 1000 --epochs 3 --output-dir models/trained_model
+
+train-mlflow:
+	python scripts/train.py --sample-size 1000 --epochs 3 --output-dir models/trained_model --use-mlflow --run-name "baseline_experiment"
+
+mlflow-ui:
+	python scripts/start_mlflow.py
 
 predict:
 	python scripts/predict.py --model-path models/final_sentiment_bert --interactive
