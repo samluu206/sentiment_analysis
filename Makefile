@@ -22,7 +22,7 @@ install-dev:
 	pip install -r requirements-dev.txt
 
 setup:
-	python -m venv venv
+	python3 -m venv venv
 	@echo "Virtual environment created. Activate it with:"
 	@echo "  source venv/bin/activate  (Linux/Mac)"
 	@echo "  venv\\Scripts\\activate     (Windows)"
@@ -48,13 +48,13 @@ clean:
 	rm -rf build/ dist/ htmlcov/
 
 train:
-	python scripts/train.py --sample-size 1000 --epochs 3 --output-dir models/trained_model
+	python3 scripts/train.py --sample-size 1000 --epochs 3 --output-dir models/trained_model
 
 train-mlflow:
-	python scripts/train.py --sample-size 1000 --epochs 3 --output-dir models/trained_model --use-mlflow --run-name "baseline_experiment"
+	python3 scripts/train.py --sample-size 1000 --epochs 3 --output-dir models/trained_model --use-mlflow --run-name "baseline_experiment"
 
 mlflow-ui:
-	python scripts/start_mlflow.py
+	python3 scripts/start_mlflow.py
 
 predict:
-	python scripts/predict.py --model-path models/final_sentiment_bert --interactive
+	python3 scripts/predict.py --model-path models/final_sentiment_bert --interactive

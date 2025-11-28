@@ -264,11 +264,19 @@ print(f"Best run: {best_run_id}")
 make train-mlflow
 ```
 
+### Issue: "python: No such file or directory"
+
+**Solution**: On Linux/WSL, use `python3` instead:
+```bash
+python3 scripts/start_mlflow.py
+# Or just use: make mlflow-ui (already fixed)
+```
+
 ### Issue: Port 5000 already in use
 
 **Solution**: Use a different port:
 ```bash
-python scripts/start_mlflow.py --port 5001
+python3 scripts/start_mlflow.py --port 5001
 ```
 
 ### Issue: Can't see my run
