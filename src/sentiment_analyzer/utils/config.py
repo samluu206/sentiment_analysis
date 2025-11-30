@@ -10,8 +10,19 @@ class DataConfig:
     raw_data_path: str = "data/raw"
     processed_data_path: str = "data/processed"
     sample_size: Optional[int] = None
-    train_split: float = 0.8
+    train_split: float = 0.6
+    val_split: float = 0.2
+    test_split: float = 0.2
     random_seed: int = 42
+
+    def __post_init__(self):
+        """Validate that splits sum to 1.0."""
+        total = self.train_split + self.val_split + self.test_split
+        if not (0.99 <= total <= 1.01):  # Allow small floating point errors
+            raise ValueError(
+                f"Data splits must sum to 1.0, got {total:.3f} "
+                f"(train={self.train_split}, val={self.val_split}, test={self.test_split})"
+            )
 
 
 @dataclass

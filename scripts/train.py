@@ -42,19 +42,29 @@ def main(args):
             }
         )
 
-    data_path = Path(config.project_root) / "data" / "raw" / "amazon_polarity_sample.csv"
+    # Use provided data path or default
+    if args.data_path:
+        data_path = Path(args.data_path)
+    else:
+        data_path = Path(config.project_root) / "data" / "raw" / "amazon_polarity_sample.csv"
+
     logger.info(f"Loading data from {data_path}")
 
     data_loader = SentimentDataLoader(
         data_path=str(data_path),
         train_split=config.data.train_split,
+        val_split=config.data.val_split,
+        test_split=config.data.test_split,
         random_seed=config.data.random_seed
     )
 
-    train_dataset, val_dataset, df = data_loader.load_and_prepare(
+    train_dataset, val_dataset, test_dataset, df = data_loader.load_and_prepare_with_test(
         sample_size=args.sample_size
     )
-    logger.info(f"Loaded {len(train_dataset)} training samples and {len(val_dataset)} validation samples")
+    logger.info(
+        f"Loaded {len(train_dataset)} training, {len(val_dataset)} validation, "
+        f"and {len(test_dataset)} test samples"
+    )
 
     logger.info("Initializing preprocessor")
     preprocessor = TextPreprocessor(
@@ -65,6 +75,7 @@ def main(args):
     logger.info("Tokenizing datasets")
     train_dataset = preprocessor.process_dataset(train_dataset)
     val_dataset = preprocessor.process_dataset(val_dataset)
+    test_dataset = preprocessor.process_dataset(test_dataset)
 
     logger.info("Loading model")
     model_wrapper = SentimentModel(
@@ -91,9 +102,19 @@ def main(args):
         logger.info("Starting training")
         trainer = trainer_wrapper.train(train_dataset, val_dataset)
 
-        logger.info("Evaluating model")
-        eval_results = trainer_wrapper.evaluate(trainer, val_dataset)
-        logger.info(f"Evaluation results: {eval_results}")
+        logger.info("Evaluating model on validation set")
+        val_results = trainer_wrapper.evaluate(trainer, val_dataset)
+        logger.info(f"Validation results: {val_results}")
+
+        logger.info("Evaluating model on test set")
+        test_results = trainer_wrapper.evaluate(trainer, test_dataset)
+        logger.info(f"Test results: {test_results}")
+
+        # Combine results for saving
+        eval_results = {
+            "validation": val_results,
+            "test": test_results
+        }
 
         output_path = Path(config.project_root) / args.output_dir
         logger.info(f"Saving model to {output_path}")
@@ -123,6 +144,7 @@ def main(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Train sentiment analysis model")
+    parser.add_argument("--data-path", type=str, default=None, help="Path to data CSV file")
     parser.add_argument("--sample-size", type=int, default=None, help="Number of samples to use")
     parser.add_argument("--epochs", type=int, default=None, help="Number of training epochs")
     parser.add_argument("--batch-size", type=int, default=None, help="Batch size")

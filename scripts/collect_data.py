@@ -27,11 +27,14 @@ def main(args):
         df = load_amazon_dataset(
             dataset_name="amazon_polarity",
             split=args.split,
-            sample_size=args.sample_size
+            sample_size=args.sample_size,
+            random_sampling=True,
+            random_seed=42
         )
 
     elif args.dataset == "amazon_reviews_multi":
         from datasets import load_dataset
+        import numpy as np
 
         logger.info("Loading Amazon Reviews Multi dataset")
         dataset = load_dataset(
@@ -41,7 +44,11 @@ def main(args):
         )
 
         if args.sample_size and args.sample_size < len(dataset):
-            dataset = dataset.select(range(args.sample_size))
+            # Use random sampling instead of sequential
+            rng = np.random.default_rng(seed=42)
+            indices = rng.choice(len(dataset), size=args.sample_size, replace=False)
+            dataset = dataset.select(sorted(indices.tolist()))
+            logger.info(f"Randomly sampled {args.sample_size} from {len(dataset)} total reviews")
 
         df = dataset.to_pandas()
 
@@ -102,8 +109,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "--sample-size",
         type=int,
-        default=10000,
-        help="Number of samples to collect"
+        default=20000,
+        help="Number of samples to collect (default: 20000)"
     )
 
     parser.add_argument(

@@ -182,7 +182,9 @@ class AmazonReviewScraper:
 def load_amazon_dataset(
     dataset_name: str = "amazon_polarity",
     split: str = "train",
-    sample_size: Optional[int] = None
+    sample_size: Optional[int] = None,
+    random_sampling: bool = True,
+    random_seed: int = 42
 ) -> pd.DataFrame:
     """
     Load Amazon review dataset from Hugging Face.
@@ -193,11 +195,14 @@ def load_amazon_dataset(
         dataset_name: Name of the dataset (default: amazon_polarity)
         split: Dataset split (train/test)
         sample_size: Number of samples to load
+        random_sampling: If True, use random sampling; if False, sequential (default: True)
+        random_seed: Random seed for reproducibility (default: 42)
 
     Returns:
         DataFrame with reviews
     """
     from datasets import load_dataset
+    import numpy as np
 
     logger.info(f"Loading {dataset_name} dataset from Hugging Face")
 
@@ -205,7 +210,16 @@ def load_amazon_dataset(
         dataset = load_dataset(dataset_name, split=split)
 
         if sample_size and sample_size < len(dataset):
-            dataset = dataset.select(range(sample_size))
+            if random_sampling:
+                # Use random sampling to avoid bias from sequential selection
+                rng = np.random.default_rng(seed=random_seed)
+                indices = rng.choice(len(dataset), size=sample_size, replace=False)
+                dataset = dataset.select(sorted(indices.tolist()))
+                logger.info(f"Randomly sampled {sample_size} from {len(dataset)} total reviews")
+            else:
+                # Sequential sampling (kept for backward compatibility)
+                dataset = dataset.select(range(sample_size))
+                logger.info(f"Selected first {sample_size} reviews (sequential sampling)")
 
         df = dataset.to_pandas()
 
