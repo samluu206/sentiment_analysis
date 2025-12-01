@@ -97,6 +97,6 @@ tmp/
 temp/
 *.tmp
 
-# Specific to this project
-0.26.0
-0.26.0'
+# CLAUDE
+.claude
+CLAUDE
