@@ -24,9 +24,15 @@ class SentimentPredictor:
         self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
 
         self.tokenizer = AutoTokenizer.from_pretrained(str(self.model_path))
-        self.model = AutoModelForSequenceClassification.from_pretrained(
-            str(self.model_path)
-        )
+        try:
+            self.model = AutoModelForSequenceClassification.from_pretrained(
+                str(self.model_path),
+                use_safetensors=True
+            )
+        except (OSError, ValueError):
+            self.model = AutoModelForSequenceClassification.from_pretrained(
+                str(self.model_path)
+            )
         self.model.to(self.device)
         self.model.eval()
 

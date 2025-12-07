@@ -45,11 +45,19 @@ class SentimentModel:
 
     def load_model(self):
         """Load or initialize the model."""
-        self.model = AutoModelForSequenceClassification.from_pretrained(
-            self.model_name,
-            num_labels=self.num_labels,
-            ignore_mismatched_sizes=True
-        )
+        try:
+            self.model = AutoModelForSequenceClassification.from_pretrained(
+                self.model_name,
+                num_labels=self.num_labels,
+                ignore_mismatched_sizes=True,
+                use_safetensors=True
+            )
+        except (OSError, ValueError):
+            self.model = AutoModelForSequenceClassification.from_pretrained(
+                self.model_name,
+                num_labels=self.num_labels,
+                ignore_mismatched_sizes=True
+            )
         self.model.to(self.device)
         return self.model
 
@@ -65,7 +73,7 @@ class SentimentModel:
 
         save_path = Path(save_path)
         save_path.mkdir(parents=True, exist_ok=True)
-        self.model.save_pretrained(save_path)
+        self.model.save_pretrained(save_path, safe_serialization=True)
 
     def get_model(self):
         """Return the model instance."""

@@ -35,7 +35,9 @@ class TestSentimentDataLoader:
         """Create SentimentDataLoader instance."""
         return SentimentDataLoader(
             data_path=str(sample_csv_file),
-            train_split=0.8,
+            train_split=0.6,
+            val_split=0.2,
+            test_split=0.2,
             random_seed=42
         )
 
@@ -55,12 +57,13 @@ class TestSentimentDataLoader:
         assert len(df) == 3
 
     def test_prepare_dataset(self, data_loader):
-        """Test dataset preparation and splitting."""
+        """Test dataset preparation and splitting (2-way split)."""
         df = data_loader.load_csv()
         train_dataset, val_dataset = data_loader.prepare_dataset(df)
 
-        assert len(train_dataset) == 4
-        assert len(val_dataset) == 2
+        # With train_split=0.6 and 6 samples, expect 3 train + 3 val
+        assert len(train_dataset) == 3
+        assert len(val_dataset) == 3
 
         assert 'full_text' in train_dataset.column_names
         assert 'label' in train_dataset.column_names
