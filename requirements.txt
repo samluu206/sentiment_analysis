@@ -1,4 +1,17 @@
-torch>=2.0.0
+# ==============================================================================
+# PYTORCH INSTALLATION - READ BEFORE INSTALLING
+# ==============================================================================
+# PyTorch must be installed FIRST based on your hardware:
+#
+# NVIDIA GPU:  pip3 install torch torchvision torchaudio
+# AMD GPU:     pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/rocm6.1
+# CPU only:    pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
+#
+# After PyTorch is installed, run: pip install -r requirements.txt
+# ==============================================================================
+
+# Core ML Frameworks (PyTorch installed separately - see above)
+# torch>=2.0.0  # COMMENTED OUT - Install separately based on your hardware
 transformers>=4.30.0
 datasets>=2.14.0
 pandas>=2.0.0

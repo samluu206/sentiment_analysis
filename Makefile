@@ -48,10 +48,10 @@ clean:
 	rm -rf build/ dist/ htmlcov/
 
 train:
-	python3 scripts/train.py --sample-size 1000 --epochs 3 --output-dir models/trained_model
+	python3 scripts/train.py --sample-size 20000 --epochs 3 --output-dir models/trained_model
 
 train-mlflow:
-	python3 scripts/train.py --sample-size 1000 --epochs 3 --output-dir models/trained_model --use-mlflow --run-name "baseline_experiment"
+	python3 scripts/train.py --sample-size 20000 --epochs 3 --output-dir models/trained_model --use-mlflow --run-name "baseline_experiment"
 
 mlflow-ui:
 	python3 scripts/start_mlflow.py

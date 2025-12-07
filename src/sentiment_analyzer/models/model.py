@@ -4,6 +4,12 @@ import torch
 from pathlib import Path
 from typing import Optional
 
+try:
+    import torch_directml
+    HAS_DIRECTML = True
+except ImportError:
+    HAS_DIRECTML = False
+
 
 class SentimentModel:
     """Manages sentiment classification model."""
@@ -20,11 +26,21 @@ class SentimentModel:
         Args:
             model_name: Name of the pretrained model or path to saved model
             num_labels: Number of classification labels
-            device: Device to load model on (cpu/cuda). Auto-detected if None.
+            device: Device to load model on (cpu/cuda/dml). Auto-detected if None.
+                   Priority: DirectML (AMD GPU) > CUDA (NVIDIA GPU) > CPU
         """
         self.model_name = model_name
         self.num_labels = num_labels
-        self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
+
+        if device:
+            self.device = device
+        elif HAS_DIRECTML:
+            self.device = torch_directml.device()
+        elif torch.cuda.is_available():
+            self.device = "cuda"
+        else:
+            self.device = "cpu"
+
         self.model = None
 
     def load_model(self):

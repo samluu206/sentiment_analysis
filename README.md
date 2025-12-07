@@ -46,23 +46,47 @@ This project implements a fine-tuned BERT model for binary sentiment classificat
 ### Prerequisites
 
 - Python 3.8+
-- pip
+- (Optional) NVIDIA GPU with CUDA 11.8+ OR AMD GPU with ROCm 6.0+
+- 16GB+ RAM (or 12GB+ GPU VRAM for training)
 
 ### Setup
 
-1. Clone the repository:
+1. **Clone the repository:**
 ```bash
 git clone <repository-url>
 cd sentiment-analyzer
 ```
 
-2. Create and activate virtual environment:
+2. **Create and activate virtual environment:**
 ```bash
 python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 ```
 
-3. Install the package:
+3. **Install PyTorch (Choose based on your hardware):**
+
+**For NVIDIA GPUs (CUDA):**
+```bash
+pip3 install torch torchvision torchaudio
+```
+
+**For AMD GPUs (ROCm):**
+```bash
+pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/rocm6.1
+```
+
+**For CPU only:**
+```bash
+pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
+```
+
+4. **Verify GPU detection (optional):**
+```bash
+python3 -c "import torch; print(f'GPU: {torch.cuda.is_available()}')"
+# Should print "GPU: True" if GPU detected
+```
+
+5. **Install the package and dependencies:**
 ```bash
 pip install -e .
 ```
@@ -76,6 +100,21 @@ For API deployment:
 ```bash
 pip install -e ".[api]"
 ```
+
+### GPU Support
+
+This project automatically detects and uses available GPUs:
+
+| GPU Vendor | Backend | Performance | Installation |
+|------------|---------|-------------|--------------|
+| **NVIDIA** | CUDA 11.8+ | Baseline (100%) | `pip install torch` (default) |
+| **AMD** | ROCm 6.0+ | ~85% of CUDA | `pip install torch --index-url ...rocm6.1` |
+| **CPU** | - | ~5-10% of GPU | Automatic fallback |
+
+**Training Time Estimates** (10K samples, 3 epochs):
+- NVIDIA RTX 4090: ~20 minutes
+- AMD RX 7900 XTX: ~25 minutes
+- CPU (16 cores): ~4 hours
 
 ## Quick Start
 
