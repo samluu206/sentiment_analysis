@@ -97,6 +97,15 @@ tmp/
 temp/
 *.tmp
 
+# Deployment artifacts
+*.tar
+*.tar.gz
+deployment/terraform/.terraform/
+deployment/terraform/*.tfstate
+deployment/terraform/*.tfstate.*
+deployment/terraform/*.tfvars
+deployment/terraform/.terraform.lock.hcl
+
 # CLAUDE
 .claude
 docs

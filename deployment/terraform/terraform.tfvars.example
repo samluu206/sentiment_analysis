@@ -1,0 +1,17 @@
+aws_region = "us-east-1"
+
+environment = "dev"
+
+instance_type = "t2.medium"
+
+key_name = "your-ec2-key-pair-name"
+
+vpc_id = "vpc-xxxxxxxxxxxxxxxxx"
+
+subnet_id = "subnet-xxxxxxxxxxxxxxxxx"
+
+allowed_ssh_cidrs = ["YOUR_IP/32"]
+
+root_volume_size = 20
+
+use_elastic_ip = false

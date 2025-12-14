@@ -1,0 +1,115 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sentiment-api
+  namespace: sentiment-analysis
+  labels:
+    app: sentiment-api
+    component: backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sentiment-api
+  template:
+    metadata:
+      labels:
+        app: sentiment-api
+        component: backend
+    spec:
+      initContainers:
+      - name: model-downloader
+        image: python:3.10-slim
+        command:
+        - /bin/bash
+        - -c
+        - |
+          set -e
+          echo "Installing dependencies..."
+          pip install --no-cache-dir transformers torch --index-url https://download.pytorch.org/whl/cpu
+
+          echo "Downloading RoBERTa sentiment model..."
+          python3 << 'EOF'
+          from transformers import AutoModelForSequenceClassification, AutoTokenizer
+          import os
+
+          model_name = "cardiffnlp/twitter-roberta-base-sentiment"
+          output_dir = "/models/roberta_sentiment"
+
+          if not os.path.exists(output_dir):
+              print(f"Downloading model from {model_name}...")
+              tokenizer = AutoTokenizer.from_pretrained(model_name)
+              model = AutoModelForSequenceClassification.from_pretrained(model_name)
+
+              tokenizer.save_pretrained(output_dir)
+              model.save_pretrained(output_dir)
+              print(f"Model saved to {output_dir}")
+          else:
+              print(f"Model already exists at {output_dir}, skipping download")
+          EOF
+
+          echo "Model download complete"
+        volumeMounts:
+        - name: model-storage
+          mountPath: /models
+        resources:
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+
+      containers:
+      - name: api
+        image: sentiment-analyzer:latest
+        imagePullPolicy: IfNotPresent
+        command: ["uvicorn"]
+        args:
+        - "sentiment_analyzer.api.main:app"
+        - "--host"
+        - "$(API_HOST)"
+        - "--port"
+        - "$(API_PORT)"
+        - "--workers"
+        - "1"
+        ports:
+        - containerPort: 8000
+          name: http
+          protocol: TCP
+        envFrom:
+        - configMapRef:
+            name: sentiment-config
+        volumeMounts:
+        - name: model-storage
+          mountPath: /app/models
+        resources:
+          limits:
+            memory: "1.5Gi"
+            cpu: "1000m"
+          requests:
+            memory: "1Gi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+
+      volumes:
+      - name: model-storage
+        emptyDir:
+          sizeLimit: 2Gi
+
+      restartPolicy: Always
