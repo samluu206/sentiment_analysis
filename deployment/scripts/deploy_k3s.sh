@@ -22,7 +22,20 @@ else
 fi
 
 echo "Step 3: Apply Kubernetes manifests"
-kubectl apply -f ../k8s/
+echo "Creating namespace first..."
+kubectl apply -f ../../k8s/namespace.yaml
+
+echo "Waiting for namespace to be ready..."
+sleep 3
+
+echo "Applying ConfigMap..."
+kubectl apply -f ../../k8s/configmap.yaml
+
+echo "Applying deployments and services..."
+kubectl apply -f ../../k8s/api-deployment.yaml
+kubectl apply -f ../../k8s/api-service.yaml
+kubectl apply -f ../../k8s/gradio-deployment.yaml
+kubectl apply -f ../../k8s/gradio-service.yaml
 
 echo "Step 4: Wait for deployments to be ready"
 echo "This may take several minutes as init containers download the model..."
