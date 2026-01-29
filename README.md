@@ -1,5 +1,11 @@
 # Sentiment Analyzer
 
+[![CI](https://github.com/samluu206/sentiment_analysis/actions/workflows/ci.yml/badge.svg)](https://github.com/samluu206/sentiment_analysis/actions/workflows/ci.yml)
+[![Docker Build](https://github.com/samluu206/sentiment_analysis/actions/workflows/docker.yml/badge.svg)](https://github.com/samluu206/sentiment_analysis/actions/workflows/docker.yml)
+[![codecov](https://codecov.io/gh/samluu206/sentiment_analysis/branch/main/graph/badge.svg)](https://codecov.io/gh/samluu206/sentiment_analysis)
+[![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 A production-ready BERT-based sentiment classification system for product reviews, achieving 95% accuracy on Amazon review data.
 
 ## Overview

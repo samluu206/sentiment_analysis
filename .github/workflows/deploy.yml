@@ -1,0 +1,89 @@
+name: Deploy to AWS EC2
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        type: choice
+        options:
+          - staging
+          - production
+      image_tag:
+        description: 'Docker image tag to deploy'
+        required: true
+        default: 'latest'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment }}
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ secrets.AWS_REGION }}
+
+    - name: Setup SSH key
+      run: |
+        mkdir -p ~/.ssh
+        echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/deploy_key
+        chmod 600 ~/.ssh/deploy_key
+        ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
+
+    - name: Pull latest Docker image on EC2
+      run: |
+        ssh -i ~/.ssh/deploy_key ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
+          echo "Pulling Docker image: ${{ github.event.inputs.image_tag }}"
+          docker pull ghcr.io/${{ github.repository }}:${{ github.event.inputs.image_tag }}
+        EOF
+
+    - name: Deploy to K3s cluster
+      run: |
+        ssh -i ~/.ssh/deploy_key ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
+          echo "Updating K3s deployments..."
+          cd ~/sentiment_analysis/k8s
+
+          # Update image tag in deployment files
+          sed -i 's|image: .*sentiment.*|image: ghcr.io/${{ github.repository }}:${{ github.event.inputs.image_tag }}|g' api-deployment.yaml
+          sed -i 's|image: .*sentiment.*|image: ghcr.io/${{ github.repository }}:${{ github.event.inputs.image_tag }}|g' gradio-deployment.yaml
+
+          # Apply updated manifests
+          kubectl apply -f api-deployment.yaml -n sentiment-analysis
+          kubectl apply -f gradio-deployment.yaml -n sentiment-analysis
+
+          # Wait for rollout
+          kubectl rollout status deployment/sentiment-api -n sentiment-analysis --timeout=5m
+          kubectl rollout status deployment/sentiment-gradio -n sentiment-analysis --timeout=5m
+
+          echo "Deployment completed successfully!"
+        EOF
+
+    - name: Verify deployment
+      run: |
+        ssh -i ~/.ssh/deploy_key ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
+          echo "Checking pod status..."
+          kubectl get pods -n sentiment-analysis
+
+          echo "Checking services..."
+          kubectl get services -n sentiment-analysis
+        EOF
+
+    - name: Health check
+      run: |
+        echo "Running health check..."
+        sleep 10
+        curl -f http://${{ secrets.EC2_HOST }}:30800/health || exit 1
+        echo "API health check passed!"
+
+    - name: Cleanup
+      if: always()
+      run: |
+        rm -f ~/.ssh/deploy_key
