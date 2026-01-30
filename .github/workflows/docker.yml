@@ -2,7 +2,7 @@ name: Docker Build and Push
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, test/ci-cd ]
     tags:
       - 'v*'
   workflow_dispatch:
