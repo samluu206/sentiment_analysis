@@ -17,7 +17,8 @@ COPY src/ src/
 
 RUN pip install -e .
 
-COPY models/roberta_sentiment models/roberta_sentiment
+# Create models directory (model will be downloaded at runtime or mounted as volume)
+RUN mkdir -p models/roberta_sentiment
 
 ENV MODEL_PATH=/app/models/roberta_sentiment
 ENV PYTHONUNBUFFERED=1
