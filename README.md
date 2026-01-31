@@ -22,6 +22,31 @@ This project implements a fine-tuned BERT model for binary sentiment classificat
 - Confidence scores for predictions
 - Comprehensive logging and metrics tracking
 
+## Architecture
+
+This project implements a complete end-to-end ML system with production deployment on AWS.
+
+### System Overview
+
+```mermaid
+graph LR
+    User[User] --> API[FastAPI<br/>REST API]
+    User --> Gradio[Gradio<br/>Web Demo]
+    API --> Model[RoBERTa Model<br/>94.53% Accuracy]
+    Gradio --> Model
+
+    CI[GitHub Actions<br/>CI/CD] --> Docker[Docker<br/>Images]
+    Docker --> K8s[K3s on AWS EC2<br/>Production]
+    K8s --> API
+    K8s --> Gradio
+
+    style Model fill:#FF9800
+    style K8s fill:#326CE5
+    style CI fill:#2196F3
+```
+
+For detailed architecture diagrams including ML pipeline flow, deployment architecture, and data flow, see **[Architecture Documentation](docs/architecture.md)**.
+
 ## Project Structure
 
 ```

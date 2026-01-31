@@ -108,4 +108,4 @@ deployment/terraform/.terraform.lock.hcl
 
 # CLAUDE
 .claude
-docs
+CLAUDE.md
