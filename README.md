@@ -21,6 +21,7 @@ This project implements a fine-tuned RoBERTa model for binary sentiment classifi
 - Modular, testable codebase with 56+ unit tests
 - Batch prediction support with confidence scores
 - MLflow integration for experiment tracking
+- Production monitoring with Prometheus + Grafana (12 custom metrics, real-time dashboards)
 - Comprehensive architecture documentation with diagrams
 
 ## Architecture

@@ -8,6 +8,9 @@ from fastapi import FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import torch
+from prometheus_client import Counter, Histogram, Gauge, generate_latest, CONTENT_TYPE_LATEST
+from prometheus_fastapi_instrumentator import Instrumentator
+from fastapi.responses import Response
 
 from sentiment_analyzer.inference.predictor import SentimentPredictor
 from sentiment_analyzer.api.schemas import (
@@ -18,6 +21,44 @@ from sentiment_analyzer.api.schemas import (
     HealthResponse,
     ModelInfoResponse,
     ErrorResponse
+)
+
+# Prometheus metrics
+prediction_counter = Counter(
+    'sentiment_predictions_total',
+    'Total number of predictions made',
+    ['sentiment', 'endpoint']
+)
+
+prediction_latency = Histogram(
+    'sentiment_prediction_duration_seconds',
+    'Time spent processing prediction',
+    ['endpoint'],
+    buckets=(0.01, 0.025, 0.05, 0.075, 0.1, 0.25, 0.5, 0.75, 1.0, 2.5, 5.0)
+)
+
+confidence_score = Histogram(
+    'sentiment_prediction_confidence',
+    'Confidence scores of predictions',
+    ['sentiment'],
+    buckets=(0.5, 0.6, 0.7, 0.8, 0.85, 0.9, 0.95, 0.98, 0.99, 1.0)
+)
+
+batch_size_metric = Histogram(
+    'sentiment_batch_size',
+    'Size of batch predictions',
+    buckets=(1, 5, 10, 20, 32, 50, 100)
+)
+
+model_loaded = Gauge(
+    'sentiment_model_loaded',
+    'Whether the model is loaded (1) or not (0)'
+)
+
+error_counter = Counter(
+    'sentiment_errors_total',
+    'Total number of errors',
+    ['error_type', 'endpoint']
 )
 
 
@@ -38,6 +79,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Add Prometheus instrumentation
+Instrumentator().instrument(app).expose(app, endpoint="/metrics")
 
 # Global predictor instance
 predictor: Optional[SentimentPredictor] = None
@@ -83,9 +127,11 @@ async def load_model():
         )
 
         print("✅ Model loaded successfully!")
+        model_loaded.set(1)
 
     except Exception as e:
         print(f"❌ Error loading model: {e}")
+        model_loaded.set(0)
         raise
 
 
@@ -175,14 +221,24 @@ async def predict(request: PredictRequest):
         ```
     """
     if predictor is None:
+        error_counter.labels(error_type="model_not_loaded", endpoint="predict").inc()
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Model not loaded"
         )
 
     try:
+        # Track prediction latency
+        start_time = time.time()
+
         # Make prediction
         result = predictor.predict_with_confidence(request.text)
+
+        # Record metrics
+        latency = time.time() - start_time
+        prediction_latency.labels(endpoint="predict").observe(latency)
+        prediction_counter.labels(sentiment=result["sentiment"], endpoint="predict").inc()
+        confidence_score.labels(sentiment=result["sentiment"]).observe(result["confidence"])
 
         # Format response
         return PredictResponse(
@@ -195,6 +251,7 @@ async def predict(request: PredictRequest):
         )
 
     except Exception as e:
+        error_counter.labels(error_type="prediction_failed", endpoint="predict").inc()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Prediction failed: {str(e)}"
@@ -252,27 +309,40 @@ async def batch_predict(request: BatchPredictRequest):
         ```
     """
     if predictor is None:
+        error_counter.labels(error_type="model_not_loaded", endpoint="batch_predict").inc()
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Model not loaded"
         )
 
     try:
+        # Track batch size and latency
+        batch_size_metric.observe(len(request.texts))
+        start_time = time.time()
+
         # Make batch prediction
         results = predictor.batch_predict(request.texts, batch_size=32)
 
-        # Format predictions
-        predictions = [
-            PredictResponse(
-                sentiment=result["sentiment"],
-                confidence=result["confidence"],
-                probabilities={
-                    "NEGATIVE": result["negative_prob"],
-                    "POSITIVE": result["positive_prob"]
-                }
+        # Record latency
+        latency = time.time() - start_time
+        prediction_latency.labels(endpoint="batch_predict").observe(latency)
+
+        # Format predictions and record metrics
+        predictions = []
+        for result in results:
+            prediction_counter.labels(sentiment=result["sentiment"], endpoint="batch_predict").inc()
+            confidence_score.labels(sentiment=result["sentiment"]).observe(result["confidence"])
+
+            predictions.append(
+                PredictResponse(
+                    sentiment=result["sentiment"],
+                    confidence=result["confidence"],
+                    probabilities={
+                        "NEGATIVE": result["negative_prob"],
+                        "POSITIVE": result["positive_prob"]
+                    }
+                )
             )
-            for result in results
-        ]
 
         return BatchPredictResponse(
             predictions=predictions,
@@ -280,6 +350,7 @@ async def batch_predict(request: BatchPredictRequest):
         )
 
     except Exception as e:
+        error_counter.labels(error_type="batch_prediction_failed", endpoint="batch_predict").inc()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Batch prediction failed: {str(e)}"

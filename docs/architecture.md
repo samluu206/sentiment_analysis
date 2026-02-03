@@ -397,15 +397,42 @@ graph LR
 
 ---
 
+## Monitoring & Observability
+
+**Production monitoring stack with Prometheus + Grafana.**
+
+### Metrics Tracked
+
+- **API Performance**: Latency (p50/p95/p99), throughput, error rates
+- **ML Metrics**: Prediction distribution, confidence scores, batch sizes
+- **System Health**: Model status, resource usage, request patterns
+
+### Dashboard Features
+
+- 12 visualization panels (time series, gauges, heatmaps, pie charts)
+- Real-time updates (10s refresh)
+- 7-day metric retention
+- SLA monitoring with configurable thresholds
+
+**For detailed monitoring documentation, see [docs/monitoring.md](monitoring.md)**
+
+### Access Points
+
+- **Prometheus**: `http://<EC2_IP>:30900` - Metrics collection & queries
+- **Grafana**: `http://<EC2_IP>:30300` - Visual dashboards & analytics
+
+---
+
 ## Future Enhancements
 
-- [ ] Add Prometheus + Grafana monitoring
+- [x] Add Prometheus + Grafana monitoring ✅
 - [ ] Implement A/B testing framework
-- [ ] Add model drift detection
+- [ ] Add automated model drift detection
 - [ ] Implement caching layer (Redis)
 - [ ] Multi-model support (BERT, DistilBERT)
 - [ ] GPU acceleration for inference
-- [ ] Load balancing with multiple replicas
+- [ ] Automated alerting with AlertManager
 - [ ] Database integration for prediction logging
 - [ ] Real-time streaming with Kafka
 - [ ] Feature store integration
+- [ ] Distributed tracing (OpenTelemetry/Jaeger)
